@@ -11,8 +11,8 @@ import Cocoa
 ///
 /// Responsibilities:
 /// - Initialize and wire up all services
-/// - Participate in the public AVAudioApplication AirPods mute-control path
-/// - Apply the exact mute state requested by an AirPods gesture
+/// - Observe the narrow audioaccessoryd AirPods mute event in unified logging
+/// - Toggle the default input device through the existing global Core Audio path
 /// - Handle app lifecycle events
 ///
 class AppDelegate: NSObject, NSApplicationDelegate {
@@ -34,12 +34,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Initialize services
         setupServices()
 
-        // Start the public AirPods mute-control experiment.
+        // Start the local AirPods mute-event monitor.
         setupAirPodsMuteHandler()
 
         print("[AppDelegate] Application ready")
         print("[AppDelegate] Press your AirPods button to toggle mute")
-        print("[AppDelegate] Listening through AVAudioApplication...")
+        print("[AppDelegate] Listening for the audioaccessoryd mute event...")
     }
 
     func applicationWillTerminate(_ notification: Notification) {

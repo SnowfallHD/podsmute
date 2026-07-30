@@ -46,7 +46,8 @@ final class AudioMuteController: ObservableObject {
     // MARK: - Public Methods
 
     /// Toggle the mute state of the default input device.
-    func toggleMute() {
+    @discardableResult
+    func toggleMute() -> Bool {
         setMute(!isMuted)
     }
 

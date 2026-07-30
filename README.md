@@ -90,7 +90,9 @@ PodsMute/
 
 ### How It Works
 
-The app opens a minimal input stream that discards all audio buffers, then registers Apple's public `AVAudioApplication.setInputMuteStateChangeHandler` callback. When macOS routes an AirPods mute gesture to PodsMute, the app applies the exact requested state to the default input device. Microphone samples are neither retained nor transmitted.
+The app runs a narrowly filtered local unified-log stream for audioaccessoryd's `AAMuteStateChanged` event. When that event arrives, PodsMute invokes the same Core Audio default-input-device toggle as its working menu-bar action. It doesn't open, retain, or transmit microphone audio and doesn't compete with the active voice app's audio session.
+
+This event name is an observed macOS implementation detail rather than a documented public notification contract, so a future macOS update may require the filter to be updated.
 
 ### Audio Mute
 

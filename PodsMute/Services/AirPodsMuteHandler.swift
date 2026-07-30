@@ -2,26 +2,27 @@
 //  AirPodsMuteHandler.swift
 //  PodsMute
 //
-//  Participates in the public macOS AirPods mute-control path.
+//  Observes the narrow audioaccessoryd mute event exposed through unified logging.
 //
 
-import AVFAudio
 import Foundation
 
-/// Opens a minimal input stream and handles AirPods mute requests for this app.
+/// Converts an AirPods mute gesture into the same global Core Audio device mute
+/// used by PodsMute's menu-bar action.
 ///
-/// The input tap intentionally discards every buffer. It exists only to make
-/// PodsMute an active input-audio app while testing Apple's public mute API.
+/// macOS routes the public AVAudioApplication callback only to the selected call
+/// process. Since another app owns the voice session, PodsMute instead follows the
+/// content-free `AAMuteStateChanged` event already emitted by audioaccessoryd.
 final class AirPodsMuteHandler {
 
     var onMuteStateChanged: ((Bool) -> Void)?
     var onStatusChanged: ((String) -> Void)?
 
     private let audioController: AudioMuteController
-    private let audioApplication = AVAudioApplication.shared
-    private let audioEngine = AVAudioEngine()
-    private var hasInputTap = false
-    private var isRunning = false
+    private let monitorQueue = DispatchQueue(label: "com.podsmute.audio-accessory-log")
+    private var monitorProcess: Process?
+    private var outputBuffer = Data()
+    private var isStopping = false
 
     init(audioController: AudioMuteController) {
         self.audioController = audioController
@@ -32,90 +33,89 @@ final class AirPodsMuteHandler {
     }
 
     func start() {
-        guard !isRunning else { return }
+        guard monitorProcess == nil else { return }
 
-        switch audioApplication.recordPermission {
-        case .granted:
-            startInputAndHandler()
-        case .denied:
-            report("Microphone access is denied; AirPods gesture experiment is inactive")
-        case .undetermined:
-            report("Waiting for microphone authorization")
-            AVAudioApplication.requestRecordPermission { [weak self] granted in
-                DispatchQueue.main.async {
-                    guard let self else { return }
-                    if granted {
-                        self.startInputAndHandler()
-                    } else {
-                        self.report("Microphone access was not granted; AirPods gesture experiment is inactive")
-                    }
+        let outputPipe = Pipe()
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/log")
+        process.arguments = [
+            "stream",
+            "--style", "ndjson",
+            "--level", "debug",
+            "--predicate",
+            "process == \"audioaccessoryd\" AND eventMessage CONTAINS \"Mute Control: AAMuteStateChanged message:\"",
+        ]
+        process.standardOutput = outputPipe
+        process.standardError = FileHandle.nullDevice
+
+        outputPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
+            let data = handle.availableData
+            guard !data.isEmpty else { return }
+            self?.monitorQueue.async {
+                self?.consume(data)
+            }
+        }
+
+        process.terminationHandler = { [weak self] terminatedProcess in
+            guard let self else { return }
+            outputPipe.fileHandleForReading.readabilityHandler = nil
+            self.monitorQueue.async {
+                self.outputBuffer.removeAll(keepingCapacity: false)
+            }
+            DispatchQueue.main.async {
+                let wasStopping = self.isStopping
+                self.monitorProcess = nil
+                self.isStopping = false
+                if !wasStopping {
+                    self.report("AirPods mute event monitor exited with status \(terminatedProcess.terminationStatus)")
                 }
             }
-        @unknown default:
-            report("Unknown microphone authorization state; AirPods gesture experiment is inactive")
+        }
+
+        do {
+            try process.run()
+            monitorProcess = process
+            report("AirPods mute event monitor active")
+        } catch {
+            outputPipe.fileHandleForReading.readabilityHandler = nil
+            report("Failed to start AirPods mute event monitor: \(error.localizedDescription)")
         }
     }
 
     func stop() {
-        guard isRunning || hasInputTap else { return }
-
-        do {
-            try audioApplication.setInputMuteStateChangeHandler(nil)
-        } catch {
-            report("Failed to clear AirPods mute handler: \(error.localizedDescription)")
-        }
-
-        if audioEngine.isRunning {
-            audioEngine.stop()
-        }
-        if hasInputTap {
-            audioEngine.inputNode.removeTap(onBus: 0)
-            hasInputTap = false
-        }
-
-        isRunning = false
-        report("AirPods mute handler stopped; microphone mute state was preserved")
+        guard let process = monitorProcess else { return }
+        isStopping = true
+        process.terminate()
+        report("AirPods mute event monitor stopped")
     }
 
-    private func startInputAndHandler() {
-        guard !isRunning else { return }
+    private func consume(_ data: Data) {
+        outputBuffer.append(data)
 
-        let inputNode = audioEngine.inputNode
-        let format = inputNode.inputFormat(forBus: 0)
-        guard format.channelCount > 0 else {
-            report("Default input has no channels; AirPods gesture experiment is inactive")
+        while let newline = outputBuffer.firstIndex(of: 0x0A) {
+            let line = outputBuffer[..<newline]
+            outputBuffer.removeSubrange(...newline)
+            handleLogLine(Data(line))
+        }
+    }
+
+    private func handleLogLine(_ data: Data) {
+        guard
+            let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let message = object["eventMessage"] as? String,
+            message.contains("Mute Control: AAMuteStateChanged message:")
+        else {
             return
         }
 
-        inputNode.installTap(onBus: 0, bufferSize: 1_024, format: format) { _, _ in
-            // Deliberately discard microphone samples. Nothing is retained or sent.
-        }
-        hasInputTap = true
-        audioEngine.prepare()
-
-        do {
-            try audioEngine.start()
-            try audioApplication.setInputMuteStateChangeHandler { [weak self] shouldMute in
-                guard let self else { return false }
-
-                let didApply = self.audioController.setMute(shouldMute)
-                self.report("AirPods requested mute=\(shouldMute); applied=\(didApply)")
-
-                if didApply {
-                    DispatchQueue.main.async {
-                        self.onMuteStateChanged?(shouldMute)
-                    }
-                }
-                return didApply
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            let isMuted = !self.audioController.isMuted
+            let didApply = self.audioController.setMute(isMuted)
+            self.report("AirPods mute gesture received; global toggle applied=\(didApply)")
+            if didApply {
+                self.onMuteStateChanged?(isMuted)
             }
-            isRunning = true
-            report("AirPods mute handler active with a discard-only input stream")
-        } catch {
-            try? audioApplication.setInputMuteStateChangeHandler(nil)
-            audioEngine.stop()
-            inputNode.removeTap(onBus: 0)
-            hasInputTap = false
-            report("Failed to start AirPods mute handler: \(error.localizedDescription)")
         }
     }
 
