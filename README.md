@@ -2,6 +2,15 @@
 
 A macOS menu bar application that detects AirPods button presses and toggles system-wide microphone mute.
 
+## What's New in This Fork
+
+- AirPods Pro stem presses now trigger the same system-wide Core Audio input mute as the menu-bar toggle.
+- The global mute continues to work while ChatGPT voice is active, so the microphone can be muted away from the Mac.
+- PodsMute does not capture microphone audio or alter voice-app output volume.
+- Quitting PodsMute restores the microphone to its unmuted state.
+
+Stem-press detection uses an observed macOS `audioaccessoryd` event rather than a documented public notification, so a future macOS update may require the event filter to be updated.
+
 ## Supported Devices
 
 - AirPods Max (crown button)
