@@ -10,7 +10,7 @@
 		31D968C52EE89FF100CE703C /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 31D968C42EE89FF100CE703C /* AppIcon.icns */; };
 		4858453AC7AEF3575566CC45 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FCF4C6BD82713D6B817092EF /* CoreAudio.framework */; };
 		7EB1763721962FA2554DB2DA /* PodsMuteApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5DEFCE9EF839109AAB5DB5A /* PodsMuteApp.swift */; };
-		9973D694A7FC6BD1D4891ABF /* AudioAccessoryMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73538844FEA894F7FBC2E66D /* AudioAccessoryMonitor.swift */; };
+		9973D694A7FC6BD1D4891ABF /* AirPodsMuteHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73538844FEA894F7FBC2E66D /* AirPodsMuteHandler.swift */; };
 		9FC807F9FCF708EEC67C6C90 /* StatusBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B56E07DA6711D12BFB1F0182 /* StatusBarController.swift */; };
 		BB0BD99D5E7F4B2D819C69E3 /* BluetoothManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26D77BC34E631E2BCDE420B9 /* BluetoothManager.swift */; };
 		E54EF3A9ECC33C27E887C227 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D25F062F51F8D6C97166F2F7 /* Cocoa.framework */; };
@@ -24,7 +24,7 @@
 		26D77BC34E631E2BCDE420B9 /* BluetoothManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BluetoothManager.swift; sourceTree = "<group>"; };
 		31D968C42EE89FF100CE703C /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
 		501C9A01B95DE856250B7E35 /* PodsMute.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PodsMute.entitlements; sourceTree = "<group>"; };
-		73538844FEA894F7FBC2E66D /* AudioAccessoryMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioAccessoryMonitor.swift; sourceTree = "<group>"; };
+		73538844FEA894F7FBC2E66D /* AirPodsMuteHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirPodsMuteHandler.swift; sourceTree = "<group>"; };
 		90BE3A89C12CA9404F743738 /* PodsMute.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PodsMute.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9F6A6C09AC4F893074FC7996 /* PodsMute-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "PodsMute-Bridging-Header.h"; sourceTree = "<group>"; };
 		B56E07DA6711D12BFB1F0182 /* StatusBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarController.swift; sourceTree = "<group>"; };
@@ -111,7 +111,7 @@
 		E00D042AA7AC124FCF9D06A8 /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				73538844FEA894F7FBC2E66D /* AudioAccessoryMonitor.swift */,
+				73538844FEA894F7FBC2E66D /* AirPodsMuteHandler.swift */,
 				D26B96934BB0614761F88913 /* AudioMuteController.swift */,
 				26D77BC34E631E2BCDE420B9 /* BluetoothManager.swift */,
 			);
@@ -206,7 +206,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				ED7EAEB0DA64857E8C360556 /* AppDelegate.swift in Sources */,
-				9973D694A7FC6BD1D4891ABF /* AudioAccessoryMonitor.swift in Sources */,
+				9973D694A7FC6BD1D4891ABF /* AirPodsMuteHandler.swift in Sources */,
 				E5653B2A9DB346A57F338EE7 /* AudioMuteController.swift in Sources */,
 				BB0BD99D5E7F4B2D819C69E3 /* BluetoothManager.swift in Sources */,
 				7EB1763721962FA2554DB2DA /* PodsMuteApp.swift in Sources */,

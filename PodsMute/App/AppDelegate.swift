@@ -11,19 +11,16 @@ import Cocoa
 ///
 /// Responsibilities:
 /// - Initialize and wire up all services
-/// - Monitor audioaccessoryd Darwin notifications for AirPods mute events
-/// - Toggle system mute when AirPods button is pressed
+/// - Participate in the public AVAudioApplication AirPods mute-control path
+/// - Apply the exact mute state requested by an AirPods gesture
 /// - Handle app lifecycle events
 ///
-/// The key insight: audioaccessoryd emits Darwin notifications (com.apple.audioaccessoryd.MuteState)
-/// when AirPods triggers a mute action. We listen for these native events.
-/// Supports AirPods Max and AirPods Pro.
 class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Services
 
     private var audioController: AudioMuteController!
-    private var audioAccessoryMonitor: AudioAccessoryMonitor!
+    private var airPodsMuteHandler: AirPodsMuteHandler!
     private var statusBarController: StatusBarController!
 
     // Keep reference to BluetoothManager for device detection (status display)
@@ -37,24 +34,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Initialize services
         setupServices()
 
-        // Setup audioaccessoryd notification monitoring
-        setupAudioAccessoryMonitoring()
+        // Start the public AirPods mute-control experiment.
+        setupAirPodsMuteHandler()
 
         print("[AppDelegate] Application ready")
         print("[AppDelegate] Press your AirPods button to toggle mute")
-        print("[AppDelegate] Listening for audioaccessoryd mute state notifications...")
+        print("[AppDelegate] Listening through AVAudioApplication...")
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         print("[AppDelegate] Application terminating...")
 
-        // Restore mic to unmuted state if it was muted by this app
         if audioController.isMuted {
             print("[AppDelegate] Restoring microphone to unmuted state...")
             audioController.setMute(false)
         }
 
-        audioAccessoryMonitor?.stopMonitoring()
+        airPodsMuteHandler?.stop()
     }
 
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
@@ -70,8 +66,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Create Bluetooth manager (for device status display)
         bluetoothManager = BluetoothManager()
 
-        // Create audio accessory monitor (for AirPods crown button detection)
-        audioAccessoryMonitor = AudioAccessoryMonitor()
+        airPodsMuteHandler = AirPodsMuteHandler(audioController: audioController)
 
         // Create status bar controller
         statusBarController = StatusBarController(
@@ -83,34 +78,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         checkForAirPods()
     }
 
-    private func setupAudioAccessoryMonitoring() {
-        // Set up callback for mute state changes from AirPods
-        audioAccessoryMonitor.onMuteStateChanged = { [weak self] state in
+    private func setupAirPodsMuteHandler() {
+        airPodsMuteHandler.onMuteStateChanged = { [weak self] isMuted in
             guard let self = self else { return }
 
-            print("[AppDelegate] AirPods mute state notification received!")
-
-            // Toggle system mute when AirPods triggers mute
-            self.audioController.toggleMute()
             self.statusBarController.updateIcon()
-
-            // Show popover feedback
-            self.statusBarController.showMutePopover(isMuted: self.audioController.isMuted)
+            self.statusBarController.showMutePopover(isMuted: isMuted)
         }
 
-        // Debug: log all notifications
-        audioAccessoryMonitor.onNotification = { notification in
-            print("[AppDelegate] Audio accessory notification: \(notification)")
+        airPodsMuteHandler.onStatusChanged = { status in
+            print("[AppDelegate] \(status)")
         }
 
-        // Start monitoring
-        let success = audioAccessoryMonitor.startMonitoring()
-
-        if success {
-            print("[AppDelegate] Audio accessory monitoring started successfully")
-        } else {
-            print("[AppDelegate] WARNING: Failed to start audio accessory monitoring")
-        }
+        airPodsMuteHandler.start()
     }
 
     private func checkForAirPods() {

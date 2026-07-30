@@ -34,7 +34,7 @@ PodsMute/
 │   └── StatusBarController.swift     # Menu bar icon & menu
 ├── Services/
 │   ├── AudioMuteController.swift     # Core Audio mute control
-│   ├── AudioAccessoryMonitor.swift   # Darwin notification listener
+│   ├── AirPodsMuteHandler.swift      # Public AirPods mute callback experiment
 │   └── BluetoothManager.swift        # Bluetooth connection status
 ├── Bridge/
 │   └── PodsMute-Bridging-Header.h    # Bridging header for IOBluetooth
@@ -90,7 +90,7 @@ PodsMute/
 
 ### How It Works
 
-The app listens for Darwin notifications from `audioaccessoryd`, the macOS daemon that handles audio accessory events. When AirPods trigger a mute action, the daemon emits a `com.apple.audioaccessoryd.MuteState` notification which this app intercepts to toggle the system microphone.
+The app opens a minimal input stream that discards all audio buffers, then registers Apple's public `AVAudioApplication.setInputMuteStateChangeHandler` callback. When macOS routes an AirPods mute gesture to PodsMute, the app applies the exact requested state to the default input device. Microphone samples are neither retained nor transmitted.
 
 ### Audio Mute
 

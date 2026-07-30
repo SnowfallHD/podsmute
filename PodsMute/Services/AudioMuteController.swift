@@ -52,24 +52,25 @@ final class AudioMuteController: ObservableObject {
 
     /// Set the mute state of the default input device.
     /// - Parameter muted: Whether to mute (true) or unmute (false)
-    func setMute(_ muted: Bool) {
+    @discardableResult
+    func setMute(_ muted: Bool) -> Bool {
         guard defaultInputDeviceID != kAudioObjectUnknown else {
             print("[AudioMuteController] No input device available")
-            return
+            return false
         }
-
-        guard supportsMute else {
-            print("[AudioMuteController] Device does not support mute")
-            return
-        }
-
-        var muteValue: UInt32 = muted ? 1 : 0
 
         var propertyAddress = AudioObjectPropertyAddress(
             mSelector: kAudioDevicePropertyMute,
             mScope: kAudioObjectPropertyScopeInput,
             mElement: kAudioObjectPropertyElementMain
         )
+
+        guard AudioObjectHasProperty(defaultInputDeviceID, &propertyAddress) else {
+            print("[AudioMuteController] Device does not support mute")
+            return false
+        }
+
+        var muteValue: UInt32 = muted ? 1 : 0
 
         let result = AudioObjectSetPropertyData(
             defaultInputDeviceID,
@@ -81,12 +82,14 @@ final class AudioMuteController: ObservableObject {
         )
 
         if result == noErr {
-//            DispatchQueue.main.async {
-            self.isMuted = muted
-//            }
+            DispatchQueue.main.async {
+                self.isMuted = muted
+            }
             print("[AudioMuteController] Mute set to: \(muted)")
+            return true
         } else {
             print("[AudioMuteController] Failed to set mute state: \(result)")
+            return false
         }
     }
 
